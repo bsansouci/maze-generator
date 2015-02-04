@@ -7,3 +7,6 @@ We first only generate a path from the start to the finish. After, we add the ra
 Paths between primary and secondary rooms are marked as reusable or unreusable to prevent possible openings that would allow access to secondary rooms without having passed through a primary room first. 
 
 A BFS can check the validity of the solution and if necessary, the algorithm will automaticaly regenerate to create a valid solution if there are too many path collisions.
+
+-----
+The p-pointless
