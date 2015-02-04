@@ -1,7 +1,27 @@
 //#pragma strict
+var Room: Transform;
+var Maze: Transform;
 
 function Start () {
-
+   var space = generateMaze();
+  if(space) {
+    var offsetX = 100;
+    var offsetY = 1.739833;
+    var offsetZ = 120;
+    var moveByOne = 3.5;
+    var scaleY = 2;
+//
+    for(var i = 0; i < 30; i++) {
+      for(var j = 0; j < 30; j++) {
+        var o = Instantiate(Room, Vector3 (offsetX + moveByOne * i, offsetY * scaleY, offsetZ - moveByOne * j), Quaternion.identity);
+        o.transform.GetChild(0).gameObject.SetActive(space[i,j]['north']);
+        o.transform.GetChild(1).gameObject.SetActive(space[i,j]['west']);
+        o.transform.GetChild(2).gameObject.SetActive(space[i,j]['east']);
+        o.transform.GetChild(3).gameObject.SetActive(space[i,j]['south']);
+      }
+    }
+  }
+//  Instantiate(Maze, Vector3 (offsetX, offsetY * scaleY, offsetZ), Quaternion.identity);
 }
 
 function Update () {
@@ -61,7 +81,11 @@ function remove(arr, el, f) {
   arr.RemoveAt(i);
 }
 function heuristicEstimate(p1, p2) {
-  return Mathf.Abs(p1['x'] - p2['x']) + Mathf.Abs(p1['y'] - p1['y']);
+  var diff1 = p1['x'] - p2['x'];
+  var diff2 = p1['y'] - p1['y'];
+  if(diff1 < 0) diff1 = -diff1;
+  if(diff2 < 0) diff2 = -diff2;
+  return diff1 + diff2;
 }
 function hashPoint(p) {
   return "" + p['x'] + "-" + p['y'];
@@ -74,22 +98,21 @@ function rand(max, min) {
 }
 
 function randFrom(space) {
-  return space[rand(space.length, 0)];
+  return space[rand(30, 0)];
 }
 
-function findPath(space, start, end){
+function findPath(space: Hashtable[,], start, end){
   var openSet = new Array();
   openSet.Push(start);
-  var closedSet = new Array();
-  var cameFrom = {};
-  var gScore = {};
-  var fScore = {};
+  var closedSet = new Hashtable();
+  var cameFrom = new Hashtable();
+  var gScore = new Hashtable();
+  var fScore = new Hashtable();
   gScore[hashPoint(start)] = start['weight'];
 
   fScore[hashPoint(start)] = gScore[hashPoint(start)] + heuristicEstimate(start, end);
-  Debug.LogError("Start + End = " + start['x'] + "-" + start['y'] + " " + end['x'] + "-" + end['y']);
-  var iii = 400;
-  while(openSet.length > 0 && --iii) {
+  // Debug.LogError("Start + End = " + start['x'] + "-" + start['y'] + " " + end['x'] + "-" + end['y']);
+  while(openSet.length > 0) {
 //    return new Array();
     var cur = openSet[0];
     for(var i = 1; i < openSet.length; i++) {
@@ -100,14 +123,16 @@ function findPath(space, start, end){
     if(comparePoints(cur, end)) {
       return constructPath(cameFrom, end);
     }
-
+    // Debug.LogError("1 - " + openSet.length + " -- " + cur['x'] + " " + cur['y']);
     remove(openSet, cur, comparePoints);
-    closedSet.Push(cur);
+    // Debug.LogError("2 - " + openSet.length + " -- " + cur['x'] + " " + cur['y']);
+    closedSet[hashPoint(cur)] = cur;
 
     var allNeighbours = findNeighbours(space, cur);
     for (i = 0;i<allNeighbours.length;i++){
       var neighbour = allNeighbours[i];
-      if(contains(closedSet, neighbour, comparePoints)) continue;
+
+      if(closedSet.ContainsKey(hashPoint(neighbour))) continue;
 
       var tentativeGScore = gScore[hashPoint(cur)] + neighbour['weight'];
       var neighbourHash = hashPoint(neighbour);
@@ -125,16 +150,16 @@ function findPath(space, start, end){
   }
 
   // We haven't reached the end, it's unreachable
+  // Debug.LogError("Coulnd't find path from " + start['x'] + "-" + start['y'] + " " + end['x'] + "-" + end['y']);
   return new Array();
 }
 
-function findNeighbours(space, p) {
+function findNeighbours(space: Hashtable[,], p) {
   var arr = new Array();
-  if(p['x'] + 1 < space.length && space[p['x'] + 1][p['y']]['reusable']) arr.Push(space[p['x'] + 1][p['y']]);
-  if(p['x'] - 1 >= 0 && space[p['x'] - 1][p['y']]['reusable']) arr.Push(space[p['x'] - 1][p['y']]);
-  if(p['y'] + 1 < space[p['x']].length && space[p['x']][p['y'] + 1]['reusable']) arr.Push(space[p['x']][p['y'] + 1]);
-  if(p['y'] - 1 >= 0 && space[p['x']][p['y'] - 1]['reusable']) arr.Push(space[p['x']][p['y'] - 1]);
-
+  if(p['x'] + 1 < 30 && space[p['x'] + 1,p['y']]['reusable']) arr.Push(space[p['x'] + 1,p['y']]);
+  if(p['x'] - 1 >= 0 && space[p['x'] - 1,p['y']]['reusable']) arr.Push(space[p['x'] - 1,p['y']]);
+  if(p['y'] + 1 < 30 && space[p['x'],p['y'] + 1]['reusable']) arr.Push(space[p['x'],p['y'] + 1]);
+  if(p['y'] - 1 >= 0 && space[p['x'],p['y'] - 1]['reusable']) arr.Push(space[p['x'],p['y'] - 1]);
   return arr;
 }
 
@@ -147,20 +172,19 @@ function constructPath(cameFrom, end) {
     path.Push(cur);
   }
 
-  var ret = new Array();
-  for (var i = path.length - 1; i >= 0; i--) {
-    ret.Push(path[i]);
-  }
+  // var ret = new Array();
+  // for (var i = path.length - 1; i >= 0; i--) {
+  //   ret.Push(path[i]);
+  // }
 
-  return ret;
+  return path;
 }
 
-function getInitialMaze() {
-  var space = new Array();
+function getInitialMaze(): Hashtable[,] {
+  var space: Hashtable[,] = new Hashtable[30,30];
   for (var i = 0; i < 30; i++) {
-    space.Push(new Array());
     for (var j = 0; j < 30; j++) {
-      space[i].Push({
+      space[i,j] = {
         'x': i,
         'y': j,
         'west': true,
@@ -168,69 +192,65 @@ function getInitialMaze() {
         'north': true,
         'south': true,
         'reusable': true,
-        'weight': rand(30, 0)
-      });
+        'weight': 1
+        // 'weight': rand(30, 0)
+      };
     }
   }
   return space;
 }
 
-function removeWalls(space, x, y, arr) {
-  var cell = space[x][y];
+function removeWalls(space: Hashtable[,], x, y, arr) {
+  var cell = space[x,y];
   for (var i = 0; i < arr.length; i++) {
     cell[arr[i]] = false;
 
-    if(arr[i] === "north" && y - 1 >= 0) space[x][y - 1]['south'] = false;
-    if(arr[i] === "south" && y + 1 < space[x].length) space[x][y + 1]['north'] = false;
-    if(arr[i] === "east" && x + 1 < space.length) space[x + 1][y]['west'] = false;
-    if(arr[i] === "west" && x - 1 >= 0) space[x - 1][y]['east'] = false;
+    if(arr[i] === "north" && y - 1 >= 0) space[x, y - 1]['south'] = false;
+    if(arr[i] === "south" && y + 1 < 30) space[x, y + 1]['north'] = false;
+    if(arr[i] === "east" && x + 1 < 30) space[x + 1,y]['west'] = false;
+    if(arr[i] === "west" && x - 1 >= 0) space[x - 1,y]['east'] = false;
   }
 
   return cell;
 }
 
-function doesCollide(space, topLeftX, topLeftY, size) {
+function doesCollide(space: Hashtable[,], topLeftX, topLeftY, size) {
   for (var x = topLeftX; x < topLeftX + size; x++) {
     for (var y = topLeftY; y < topLeftY + size; y++) {
-      if(!space[x][y]['reusable']) return true;
+      if(!space[x,y]['reusable']) return true;
     }
   }
 
   return false;
 }
 
-function addRoomAt(space, topLeftX, topLeftY) {
+function addRoomAt(space: Hashtable[,], topLeftX, topLeftY): Hashtable[,] {
   if(doesCollide(space, topLeftX, topLeftY, 3)) return null;
 
-  var roomCells = new Array(3);
-  for (var i = 0; i < roomCells.length; i++) {
-    roomCells[i] = new Array(3);
-  }
+  var roomCells = new Hashtable[3, 3];
 
-  roomCells[0][0] = removeWalls(space, topLeftX, topLeftY, ["east", "south"]);
-  roomCells[0][0]['reusable'] = false;
-  roomCells[1][0] = removeWalls(space, topLeftX + 1, topLeftY, ["east", "south", "west"]);
-  roomCells[2][0] = removeWalls(space, topLeftX + 2, topLeftY, ["south", "west"]);
-  roomCells[2][0]['reusable'] = false;
+  roomCells[0,0] = removeWalls(space, topLeftX, topLeftY, ["east", "south"]);
+  roomCells[0,0]['reusable'] = false;
+  roomCells[1,0] = removeWalls(space, topLeftX + 1, topLeftY, ["east", "south", "west"]);
+  roomCells[2,0] = removeWalls(space, topLeftX + 2, topLeftY, ["south", "west"]);
+  roomCells[2,0]['reusable'] = false;
 
-  roomCells[0][1] = removeWalls(space, topLeftX, topLeftY + 1, ["north", "east", "south"]);
-  roomCells[1][1] = removeWalls(space, topLeftX + 1, topLeftY + 1, ["north", "east", "south", "west"]);
+  roomCells[0,1] = removeWalls(space, topLeftX, topLeftY + 1, ["north", "east", "south"]);
+  roomCells[1,1] = removeWalls(space, topLeftX + 1, topLeftY + 1, ["north", "east", "south", "west"]);
   // This is to avoid having paths go through rooms
-  roomCells[1][1]['reusable'] = false;
-  roomCells[2][1] = removeWalls(space, topLeftX + 2, topLeftY + 1, ["south", "west", "north"]);
+  roomCells[1,1]['reusable'] = false;
+  roomCells[2,1] = removeWalls(space, topLeftX + 2, topLeftY + 1, ["south", "west", "north"]);
 
-  roomCells[0][2] = removeWalls(space, topLeftX, topLeftY + 2, ["north", "east"]);
-  roomCells[0][2]['reusable'] = false;
-  roomCells[1][2] = removeWalls(space, topLeftX + 1, topLeftY + 2, ["west", "north", "east"]);
-  roomCells[2][2] = removeWalls(space, topLeftX + 2, topLeftY + 2, ["west", "north"]);
-  roomCells[2][2]['reusable'] = false;
+  roomCells[0,2] = removeWalls(space, topLeftX, topLeftY + 2, ["north", "east"]);
+  roomCells[0,2]['reusable'] = false;
+  roomCells[1,2] = removeWalls(space, topLeftX + 1, topLeftY + 2, ["west", "north", "east"]);
+  roomCells[2,2] = removeWalls(space, topLeftX + 2, topLeftY + 2, ["west", "north"]);
+  roomCells[2,2]['reusable'] = false;
 
-  return {
-    'cells': roomCells
-  };
+  return roomCells;
 }
 
-function addRoom(space, x, y, width, height) {
+function addRoom(space: Hashtable[,], x, y, width, height): Hashtable[,] {
   var minX = x / 2 + 1;
   var minY = y / 2 + 1;
   var maxX = Mathf.Floor((x + width) / 2 - 1);
@@ -250,35 +270,31 @@ function addRoom(space, x, y, width, height) {
   return room;
 }
 
-function drawSpace(space) {
-  for (var y = 0; y < space[0].length; y++) {
-    var top = "";
-    var mid = "";
-    for (var x = 0; x < space.length; x++) {
-      if(space[x][y]['west']) mid += "|  ";
-      else mid += "   ";
-      if(x == space.length - 1) {
-        if(space[x][y]['east']) mid += "|";
-        else mid += " ";
-      }
+// function drawSpace(space: Hashtable[,]) {
+//   for (var y = 0; y < 30; y++) {
+//     var top = "";
+//     var mid = "";
+//     for (var x = 0; x < 30; x++) {
+//       if(space[x,y]['west']) mid += "|  ";
+//       else mid += "   ";
+//       if(x == 30 - 1) {
+//         if(space[x,y]['east']) mid += "|";
+//         else mid += " ";
+//       }
 
-      if(space[x][y]['north']) top += "+--";
-      else top += "   ";
-    }
-    Debug.Log(top+"\n"+mid);
-  }
-  var bot = "";
-  for (y = 0; y < space[0].length; y++) {
-    bot += "+--";
-  }
-  Debug.Log(bot);
-}
+//       if(space[x,y]['north']) top += "+--";
+//       else top += "   ";
+//     }
+//     Debug.Log(top+"\n"+mid);
+//   }
+//   var bot = "";
+//   for (y = 0; y < 30; y++) {
+//     bot += "+--";
+//   }
+//   Debug.Log(bot);
+// }
 
 function linkCells(cell1, cell2) {
-  if(Mathf.Abs(cell1['x'] - cell2['x']) + Mathf.Abs(cell1['y'] - cell2['y']) > 1) {
-    return;
-  }
-
   if(cell1['x'] - cell2['x'] > 0) {
     cell1['west'] = false;
     cell2['east'] = false;
@@ -339,7 +355,7 @@ function generateMazeGraph() {
   var id = 0;
   var Node = function(type) {
     return {
-      'adjacencyList': Array(),
+      'adjacencyList': new Array(),
       'id': ++id,
       'type': type,
       'room': null,
@@ -402,72 +418,79 @@ function checkMazeGraph(start, exit) {
  return false;
 }
 
-function getRoomAt(space, x, y) {
-  if(x + 2 >= space.length || y + 2 >= space[x].length) return null;
+function getRoomAt(space:Hashtable[,], x, y):Hashtable[,] {
+  if(x + 2 >= 30 || y + 2 >= 30) return null;
+  var arr = new Hashtable[3, 3];
+  arr[0,0] = space[x,y];
+  arr[0,1] = space[x,y+1];
+  arr[0,2] = space[x,y+2];
 
-  return {
-    'cells': [[space[x][y], space[x][y + 1], space[x][y + 2]],
-            [space[x + 1][y], space[x + 1][y + 1], space[x + 1][y + 2]],
-            [space[x + 2][y], space[x + 2][y + 1], space[x + 2][y + 2]]]
-  };
+  arr[1,0] = space[x+1,y];
+  arr[1,1] = space[x+1,y+1];
+  arr[1,2] = space[x+1,y+2];
+
+  arr[2,0] = space[x+2,y];
+  arr[2,1] = space[x+2,y+1];
+  arr[2,2] = space[x+2,y+2];
+  return arr;
 }
 
-function createMazeFromGraph(space: System.Object, curNode: Boo.Lang.Hash, cameFrom: Boo.Lang.Hash): Boo.Lang.Hash {
+function createMazeFromGraph(space: Hashtable[,], curNode: Boo.Lang.Hash, cameFrom: Boo.Lang.Hash): Hashtable[,] {
   if(curNode['room']) return curNode['room'];
 
-  Debug.LogError("blabla2");
-  var room = null;
+  // Debug.LogError("blabla2");
+  var room: Hashtable[,] = null;
   if(curNode['type'] === "start") {
     room = getRoomAt(space, 27, 27);
-    Debug.LogError("blabla3");
+    // Debug.LogError("blabla3");
     if(!room) return null;
   } else if (curNode['type'] === "exit") {
     room = getRoomAt(space, 0, 0);
-    Debug.LogError("blabla4");
+    // Debug.LogError("blabla4");
     if(!room) return null;
   } else {
     room = addRoom(space, curNode['region']['x'], curNode['region']['y'], curNode['region']['width'], curNode['region']['height']);
   }
-  Debug.LogError("blabla5");
+  // Debug.LogError("blabla5");
   if(!room) {
-    Debug.LogError("No room");
+    // Debug.LogError("No room");
     // drawSpace(space);
     return null;
   }
-  Debug.LogError("blabla6");
+  // Debug.LogError("blabla6");
   curNode['room'] = room;
   var withoutRepeats = filter(curNode['adjacencyList'], function(v) {
     return v !== cameFrom;
   });
-  Debug.LogError("blabla7");
+  // Debug.LogError("blabla7");
   for (var i = 0; i < withoutRepeats.length; i++) {
     var neighbourNode = withoutRepeats[i];
     var neighbourRoom = createMazeFromGraph(space, neighbourNode, curNode);
-    Debug.LogError("blabla8");
+    // Debug.LogError("blabla8");
     // Propagate the error...
     if(!neighbourRoom) {
-      Debug.LogError('No neighbour');
+      // Debug.LogError('No neighbour');
       return null;
     }
 
     // They are set to not reusable by default (to avoid having paths going
     // through rooms)
-    room['cells'][1][1]['reusable'] = true;
-    neighbourRoom['cells'][1][1]['reusable'] = true;
-    Debug.LogError("blabla9");
-    var p = findPath(space, room['cells'][1][1], neighbourRoom['cells'][1][1]);
-    Debug.LogError("blabla10");
-    if(p.length == 0) {
-      Debug.LogError('Path of length 0');
-      room['cells'][1][1]['reusable'] = false;
-      neighbourRoom['cells'][1][1]['reusable'] = false;
-      return null;
-    }
+    room[1,1]['reusable'] = true;
+    neighbourRoom[1,1]['reusable'] = true;
+    var p = findPath(space, room[1,1], neighbourRoom[1,1]);
+    // Debug.LogError("blabla10");
+    // Debug.LogError('Path of length ' + p.length + " between " + room[1,1]['x'] + "--" + room[1,1]['y'] + " " + neighbourRoom[1,1]['x'] + "-" + neighbourRoom[1,1]['y']);
 
+    if(p.length == 0) {
+      room[1,1]['reusable'] = false;
+      neighbourRoom[1,1]['reusable'] = false;
+      // return null;
+    }
+    // digBlockingPath(p);
     if(neighbourNode['type'] === 'primary') {
       digNonBlockingPath(p);
-      room['cells'][1][1]['reusable'] = false;
-      neighbourRoom['cells'][1][1]['reusable'] = false;
+      room[1,1]['reusable'] = false;
+      neighbourRoom[1,1]['reusable'] = false;
     } else {
       digBlockingPath(p);
     }
@@ -476,35 +499,39 @@ function createMazeFromGraph(space: System.Object, curNode: Boo.Lang.Hash, cameF
   return room;
 }
 
-function flatten(arr) {
-  return reduce(arr, function(acc, x) {
-    return acc.concat(x);
-  }, new Array());
+function flattenAndFilter(arr: Hashtable[,]) {
+  var ret = new Array();
+  for (var i = 0; i < 30; i++) {
+    for (var j = 0; j < 30; j++) {
+      if(arr[i,j]['reusable']) ret.Push(arr[i,j]);
+    }
+  }
+  return ret;
 }
 
-function blockRoom(room) {
-  room['cells'][0][0]['reusable'] = false;
-  room['cells'][1][0]['reusable'] = false;
-  room['cells'][2][0]['reusable'] = false;
+function blockRoom(room: Hashtable[,]) {
+  room[0,0]['reusable'] = false;
+  room[1,0]['reusable'] = false;
+  room[2,0]['reusable'] = false;
 
-  room['cells'][0][1]['reusable'] = false;
-  room['cells'][1][1]['reusable'] = false;
-  room['cells'][2][1]['reusable'] = false;
+  room[0,1]['reusable'] = false;
+  room[1,1]['reusable'] = false;
+  room[2,1]['reusable'] = false;
 
-  room['cells'][0][2]['reusable'] = false;
-  room['cells'][1][2]['reusable'] = false;
-  room['cells'][2][2]['reusable'] = false;
+  room[0,2]['reusable'] = false;
+  room[1,2]['reusable'] = false;
+  room[2,2]['reusable'] = false;
 }
 
-function addRandomPaths(mazeGraph, space, complexity) {
+function addRandomPaths(mazeGraph, space: Hashtable[,], complexity) {
   blockRoom(mazeGraph['startNode']['room']);
   blockRoom(mazeGraph['exitNode']['room']);
   map(mazeGraph['primaryRooms'], function(x){blockRoom(x['room']);});
   map(mazeGraph['secondaryRooms'], function(x){blockRoom(x['room']);});
 
-  var possibleCells = shuffle(filter(flatten(space), function(x) {return x['reusable'];}));
+  var possibleCells = shuffle(flattenAndFilter(space));
 
-  var totalTries = rand(complexity * 10, complexity * 2);
+  var totalTries = rand(complexity * 2, complexity);
   while(totalTries--) {
     var cell1 = possibleCells[rand(possibleCells.length, 0)];
     var cell2 = possibleCells[rand(possibleCells.length, 0)];
@@ -526,91 +553,61 @@ function getSecondary(room) {
 // link primary and secondary rooms with the walls dividing the space
 // remove the walls dividing the space
 // link primary rooms together + start + add randomPaths
-function addRegionsToGraph(space, mazeGraph) {
-  var height = Mathf.Floor(space[0].length / 3);
+function addRegionsToGraph(space: Hashtable[,], mazeGraph) {
+  var height = Mathf.Floor(30 / 3);
   for (var i = 0; i < 3; i++) {
     mazeGraph['primaryRooms'][i]['region'] = {
       'x': 0,
       'y': height * i,
-      'width': space.length,
+      'width': 30,
       'height': height
     };
     getSecondary(mazeGraph['primaryRooms'][i])['region'] = mazeGraph['primaryRooms'][i]['region'];
   }
 }
 
-function transpose(space) {
-  for (var i = 0; i < space.length; i++) {
+function transpose(space: Hashtable[,]) {
+  for (var i = 0; i < 30; i++) {
     for (var j = 0; j < i; j++) {
-      var tmp = space[i][j];
-      space[i][j] = space[j][i];
-      space[i][j] = tmp;
+      var tmp = space[i,j];
+      space[i,j] = space[j,i];
+      space[i,j] = tmp;
     }
   }
 }
 
-function generateMaze2() {
-  Debug.LogError("test1");
+function generateMaze(): Hashtable[,] {
+  // Debug.LogError("test1");
   var space = getInitialMaze();
-  Debug.LogError("test2");
+
+  // Debug.LogError("test2");
   // Generate a graph of the paths from start to end through primary rooms
   var mazeGraph = generateMazeGraph();
-  Debug.LogError("test3");
+  // Debug.LogError("test3");
   // Check if there's a path from start to exit
 //  var allGood = checkMazeGraph(mazeGraph.startNode, mazeGraph.exitNode);
 //  if(!allGood) return;
-
   // Add regions to rooms (set A, B and C)
   addRegionsToGraph(space, mazeGraph);
-  Debug.LogError("test4");
+
+  // Debug.LogError("test4");
   // Add start and exit rooms before anything
   addRoomAt(space, 27, 27);
-  Debug.LogError("test5");
+  // Debug.LogError("test5");
   addRoomAt(space, 0, 0);
-  Debug.LogError("test6");
+  // Debug.LogError("test6");
 
   // DFS to add the rooms within the regions
   var allGood2 = createMazeFromGraph(space, mazeGraph['startNode'], {});
-  Debug.LogError("test7");
+  // Debug.LogError("test7");
   if(allGood2 === null) return null;
-  Debug.LogError("test8");
+  // Debug.LogError("test8");
 
   // Transpose for more variety
   if(Random.value < 0.5) transpose(space);
-  Debug.LogError("test9");
+  // Debug.LogError("test9");
   // Increased variety by add complexity
   addRandomPaths(mazeGraph, space, 10);
-  Debug.LogError("test10");
-  return {
-    space: space,
-    mazeGraph: mazeGraph
-  };
+//  Debug.LogError(space[0,0]);
+  return space;
 }
-
-function getTime() {
-  var t = new System.DateTime(1970, 1, 1, 0, 0, 0, System.DateTimeKind.Utc);
-  return System.Convert.ToInt64((System.DateTime.UtcNow - t).TotalSeconds);
-}
-
-// var start = getTime();
-
- var maze = null;
-// var iii=3;
-//  while(iii--) {
-//  Debug.LogError("penis"+iii);
-   maze = generateMaze2();
-//    if(maze) break;
-//  }
-Debug.LogError(maze);
-// drawSpace(maze.space);
-
-
-
-// function Start () {
-//   gameObject.renderer.material.color = Color.red;
-//   generateMaze2();
-// }
-
-// function Update () {
-//   transform.Rotate(new Vector3(15,30,45)*Time.deltaTime);
-// }

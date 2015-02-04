@@ -537,9 +537,29 @@ function generateMaze() {
   // Increased variety by add complexity
   addRandomPaths(mazeGraph, space, 10);
 
+  var s1 = mazeGraph.secondaryRooms[0].room.cells;
+  var s2 = mazeGraph.secondaryRooms[1].room.cells;
+  var s3 = mazeGraph.secondaryRooms[2].room.cells;
+  var doors = [];
+  if(s1[1][0].north) doors.push({type: "north", x: s1[1][0].x, y: s1[1][0].y});
+  if(s1[1][2].south) doors.push({type: "south", x: s1[1][2].x, y: s1[1][2].y});
+  if(s1[2][1].east) doors.push({type: "east", x: s1[2][1].x, y: s1[2][1].y});
+  if(s1[0][1].west) doors.push({type: "west", x: s1[0][1].x, y: s1[0][1].y});
+
+  if(s2[1][0].north) doors.push({type: "north", x: s2[1][0].x, y: s2[1][0].y});
+  if(s2[1][2].south) doors.push({type: "south", x: s2[1][2].x, y: s2[1][2].y});
+  if(s2[2][1].east) doors.push({type: "east", x: s2[2][1].x, y: s2[2][1].y});
+  if(s2[0][1].west) doors.push({type: "west", x: s2[0][1].x, y: s2[0][1].y});
+
+  if(s3[1][0].north) doors.push({type: "north", x: s3[1][0].x, y: s3[1][0].y});
+  if(s3[1][2].south) doors.push({type: "south", x: s3[1][2].x, y: s3[1][2].y});
+  if(s3[2][1].east) doors.push({type: "east", x: s3[2][1].x, y: s3[2][1].y});
+  if(s3[0][1].west) doors.push({type: "west", x: s3[0][1].x, y: s3[0][1].y});
+
   return {
     space: space,
-    mazeGraph: mazeGraph
+    mazeGraph: mazeGraph,
+    doors: doors
   };
 }
 
@@ -556,7 +576,7 @@ app.get('/', function(req, res){
   }
 
   drawSpace(maze.space);
-  res.json({space: maze.space});
+  res.json({space: maze.space, doors: maze.doors});
 });
 
 app.listen(3000);
